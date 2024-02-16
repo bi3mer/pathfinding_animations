@@ -75,7 +75,7 @@ class PathFindingList {
   }
 
   popCheapest(): PathRecord {
-    return this.list.shift();
+    return this.list.pop();
   }
 
   find(x: number, y: number): number {
@@ -109,6 +109,13 @@ class Grid {
     }
   }
 
+  // the better way to do this is to make it a generator function which isn't 
+  // generating new animations, but is instead updating one step at a time. Then 
+  // can update it. So Dijkstra should be a class which takes in a grid, but 
+  // does not handle the animation. That way I could run default animation for 
+  // some number of frames, but then purposely pause at key moments, such as when
+  // the goal node is spotted, but not immediately selected (aka greedy dijkstra).
+  //
   // NOTE: a proper implementation would check to see if the path was found, 
   // but we aren't concerned about that.
   * dijkstra(goalX: number, goalY: number, timePerUpdate: number) {
@@ -119,14 +126,18 @@ class Grid {
     const closed = new PathFindingList();
 
     open.insert(new PathRecord(0, 0, null, 0));
-    yield* this.grid[0][0].rect().fill(DARK_RED, 1);
 
     while (open.list.length > 0) {
+      console.log(open);
       const cur = open.popCheapest();
+      console.log(cur);
+
+      // add cur to the closed list
+      yield* this.grid[cur.y][cur.x].rect().fill(DARK_RED, timePerUpdate);
+      closed.insert(cur);
 
       // check if we have found the goal position
       if (cur.x == goalX && cur.y == goalY) {
-        console.log('done!');
         foundRecord = cur;
         break; // search complete
       }
@@ -154,6 +165,8 @@ class Grid {
           const foundPR = open.list[foundPRIndex];
           if (foundPR.costSoFar > cur.costSoFar) {
             open.list.splice(foundPRIndex, 1); // remove element
+            yield* this.grid[newY][newX].rect().fill(GREEN, timePerUpdate);
+            open.insert(new PathRecord(newX, newY, cur, cur.costSoFar + this.grid[newY][newX].cost));
           }
           continue;
         }
@@ -162,10 +175,6 @@ class Grid {
         yield* this.grid[newY][newX].rect().fill(GREEN, timePerUpdate);
         open.insert(new PathRecord(newX, newY, cur, cur.costSoFar + this.grid[newY][newX].cost));
       }
-
-      // add cur to the closed list
-      yield* this.grid[cur.y][cur.x].rect().fill(DARK_RED, timePerUpdate);
-      closed.insert(cur);
     }
 
     // reconstruct path with lines
